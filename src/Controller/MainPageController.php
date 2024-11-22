@@ -18,7 +18,7 @@ class MainPageController extends AbstractController
     {
         $renderData = [];
 
-        $login = $httpClient->login('dev3', '3CQM5K');
+        $login = $httpClient->login(username:'dev3', password:'3CQM5K');
         $renderData['login'] = $login;
 
         $httpClient->getStatuses();
@@ -26,14 +26,16 @@ class MainPageController extends AbstractController
         $date = new DateTime();
         $date->modify('-3 day');
         $date->modify('00:00:00');
-        $tasks = $httpClient->getTasks($date, $GLOBALS['STATUSES']);
+        $tasks = $httpClient->getTasks(dateTime:$date,statuses: $GLOBALS['STATUSES']);
         $renderData['tasks'] = $tasks;
 
-        $secondTaskDetails = $httpClient->getTaskDetails($GLOBALS['SECOND_TASK_ID']);
-        $renderData['secondTaskDetails'] = $secondTaskDetails;
+        if(isset($GLOBALS['SECOND_TASK_ID'])){
+            $secondTaskDetails = $httpClient->getTaskDetails(taskId:$GLOBALS['SECOND_TASK_ID']);
+            $renderData['secondTaskDetails'] = $secondTaskDetails;
 
-        $comment = $httpClient->addCommentToTask($GLOBALS['SECOND_TASK_ID'], 'Abrosimon Yaroslav test task');
-        $renderData['comment'] = $comment;
+            $comment = $httpClient->addCommentToTask(taskId:$GLOBALS['SECOND_TASK_ID'], comment:'Abrosimov Yaroslav test task');
+            $renderData['comment'] = $comment;
+        }
 
         $logout = $httpClient->logout();
         $renderData['logout'] = $logout;

@@ -19,17 +19,17 @@
 
     <div>
         <h2>Tasks</h2>
-        <div>{{tasks}}</div>
+        <div>{{tasks|default('no tasks')}}</div>
     </div>
 
     <div>
         <h2>Second task</h2>
-        <div>{{secondTaskDetails}}</div>
+        <div>{{secondTaskDetails|default('no task details')}}</div>
     </div>
 
     <div>
         <h2>Add comment</h2>
-        <div>{{comment}}</div>
+        <div>{{comment|default('no comment')}}</div>
     </div>
 
     <div>

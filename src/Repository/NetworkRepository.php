@@ -7,10 +7,12 @@ use DateTime;
 use Exception;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 class NetworkRepository
 {
@@ -20,7 +22,6 @@ class NetworkRepository
         private readonly HttpClientInterface $httpClient,
     )
     {
-
     }
 
     /**
@@ -32,7 +33,7 @@ class NetworkRepository
 
         try {
             $response = $this->httpClient->request(
-                HttpMethods::$POST,
+                HttpMethods::POST->value,
                 self::$URI_AUTH . '/login_check',
                 [
                     'json' => [
@@ -53,30 +54,15 @@ class NetworkRepository
 
             return "You successfully login in your account.";
         } catch (ClientExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some client-side error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'client-side', function: __FUNCTION__);
         } catch (DecodingExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some decoding error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'decoding', function: __FUNCTION__);
         } catch (RedirectionExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some redirect error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'redirect', function: __FUNCTION__);
         } catch (ServerExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some server-side error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'server-side', function: __FUNCTION__);
         } catch (TransportExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some transport error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'transport', function: __FUNCTION__);
         } catch (Exception $e) {
             printf('<pre>');
             printf($response->getInfo('debug'));
@@ -94,7 +80,7 @@ class NetworkRepository
     {
         try {
             $this->httpClient->request(
-                HttpMethods::$POST,
+                HttpMethods::POST->value,
                 self::$URI_AUTH,
                 [
                     'json' =>
@@ -134,21 +120,10 @@ class NetworkRepository
     public function getStatuses()
     {
         try {
-            $json = [
-                'method' => 'M4GetStatus',
-                'id' => $GLOBALS['USER_ID'],
-                'jsonrpc' => '2.0'
-            ];
-
-            $response = $this->httpClient->request(
-                HttpMethods::$POST,
-                $GLOBALS['SERVICES']['SD'],
-                [
-                    'json' => $json,
-                    'headers' => [
-                        'Authorization' => 'Bearer ' . $GLOBALS['TOKEN']
-                    ],
-                ]
+            $response = self::makeRequest(
+                apiUrl: $GLOBALS['SERVICES']['SD'],
+                method: 'M4GetStatus',
+                params: []
             );
 
             $content = $response->toArray();
@@ -160,60 +135,33 @@ class NetworkRepository
             }
 
         } catch (ClientExceptionInterface $e) {
-            printf('<pre>');
-            printf(__FUNCTION__);
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            printf("Some client-side error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage());
+            return self::returnError(response: $response, exception: $e, errorType: 'client-side', function: __FUNCTION__);
         } catch (DecodingExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            printf("Some decoding error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage());
+            return self::returnError(response: $response, exception: $e, errorType: 'decoding', function: __FUNCTION__);
         } catch (RedirectionExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            printf("Some redirect error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage());
+            return self::returnError(response: $response, exception: $e, errorType: 'redirect', function: __FUNCTION__);
         } catch (ServerExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            printf("Some server-side error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage());
+            return self::returnError(response: $response, exception: $e, errorType: 'server-side', function: __FUNCTION__);
         } catch (TransportExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            printf("Some transport error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage());
+            return self::returnError(response: $response, exception: $e, errorType: 'transport', function: __FUNCTION__);
         } catch (Exception $e) {
             printf('<pre>');
             printf($response->getInfo('debug'));
             printf('</pre>');
-            printf("Some error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage());
+            return "Some error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
         }
     }
 
     public function getTasks(DateTime $dateTime, array $statuses): string
     {
         try {
-            $response = $this->httpClient->request(
-                HttpMethods::$POST,
-                $GLOBALS['SERVICES']['SD'],
-                [
-                    'json' =>
-                        [
-                            'id' => $GLOBALS['USER_ID'],
-                            'jsonrpc' => '2.0',
-                            'method' => 'M4GetTasks',
-                            'params' => [
-                                'status' => $statuses,
-                                'lastUpdate' => $dateTime->format('d.m.Y H:i:s'),
-                            ],
-                        ],
-                    'headers' => [
-                        'Authorization' => 'Bearer ' . $GLOBALS['TOKEN']
-                    ],
-                ]
+            $response = self::makeRequest(
+                params: [
+                    'status' => $statuses,
+                    'lastUpdate' => $dateTime->format('d.m.Y H:i:s'),
+                ],
+                method: 'M4GetTasks',
+                apiUrl: $GLOBALS['SERVICES']['SD']
             );
 
             $content = $response->toArray();
@@ -234,30 +182,15 @@ class NetworkRepository
             }
 
         } catch (ClientExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some client-side error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'client-side', function: __FUNCTION__);
         } catch (DecodingExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some decoding error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'decoding', function: __FUNCTION__);
         } catch (RedirectionExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some redirect error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'redirect', function: __FUNCTION__);
         } catch (ServerExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some server-side error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'server-side', function: __FUNCTION__);
         } catch (TransportExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some transport error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'transport', function: __FUNCTION__);
         } catch (Exception $e) {
             printf('<pre>');
             printf($response->getInfo('debug'));
@@ -269,23 +202,10 @@ class NetworkRepository
     public function getTaskDetails(int $taskId)
     {
         try {
-            $response = $this->httpClient->request(
-                HttpMethods::$POST,
-                $GLOBALS['SERVICES']['SD'],
-                [
-                    'json' =>
-                        [
-                            'id' => $GLOBALS['USER_ID'],
-                            'jsonrpc' => '2.0',
-                            'method' => 'M4GetTaskDetails',
-                            'params' => [
-                                'taskId' => $taskId
-                            ],
-                        ],
-                    'headers' => [
-                        'Authorization' => 'Bearer ' . $GLOBALS['TOKEN']
-                    ],
-                ]
+            $response = self::makeRequest(
+                params: ['taskId' => $taskId],
+                apiUrl: $GLOBALS['SERVICES']['SD'],
+                method: 'M4GetTaskDetails'
             );
 
             $content = $response->toArray();
@@ -297,30 +217,15 @@ class NetworkRepository
             }
 
         } catch (ClientExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some client-side error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'client-side', function: __FUNCTION__);
         } catch (DecodingExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some decoding error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'decoding', function: __FUNCTION__);
         } catch (RedirectionExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some redirect error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'redirect', function: __FUNCTION__);
         } catch (ServerExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some server-side error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'server-side', function: __FUNCTION__);
         } catch (TransportExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some transport error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'transport', function: __FUNCTION__);
         } catch (Exception $e) {
             printf('<pre>');
             printf($response->getInfo('debug'));
@@ -332,25 +237,14 @@ class NetworkRepository
     public function addCommentToTask(int $taskId, string $comment)
     {
         try {
-            $response = $this->httpClient->request(
-                HttpMethods::$POST,
-                $GLOBALS['SERVICES']['SD'],
-                [
-                    'json' =>
-                        [
-                            'id' => $GLOBALS['USER_ID'],
-                            'jsonrpc' => '2.0',
-                            'method' => 'M4AddTaskComment',
-                            'params' => [
-                                'taskId' => $taskId,
-                                'comment' => $comment,
-                                'isPublis' => true
-                            ],
-                        ],
-                    'headers' => [
-                        'Authorization' => 'Bearer ' . $GLOBALS['TOKEN']
-                    ],
-                ]
+            $response = self::makeRequest(
+                params: [
+                    'taskId' => $taskId,
+                    'comment' => $comment,
+                    'isPublis' => true
+                ],
+                method: 'M4AddTaskComment',
+                apiUrl: $GLOBALS['SERVICES']['SD']
             );
 
             $content = $response->toArray();
@@ -362,30 +256,15 @@ class NetworkRepository
             }
 
         } catch (ClientExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some client-side error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'client-side', function: __FUNCTION__);
         } catch (DecodingExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some decoding error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'decoding', function: __FUNCTION__);
         } catch (RedirectionExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some redirect error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'redirect', function: __FUNCTION__);
         } catch (ServerExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some server-side error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'server-side', function: __FUNCTION__);
         } catch (TransportExceptionInterface $e) {
-            printf('<pre>');
-            printf($response->getInfo('debug'));
-            printf('</pre>');
-            return "Some transport error happened in " . __FUNCTION__ . ". Error is " . $e->getMessage();
+            return self::returnError(response: $response, exception: $e, errorType: 'transport', function: __FUNCTION__);
         } catch (Exception $e) {
             printf('<pre>');
             printf($response->getInfo('debug'));
@@ -394,7 +273,29 @@ class NetworkRepository
         }
     }
 
-    public function addAttachmentToTask(int $taskId, array ...$files)
+    private function makeRequest(array $params, string $method, string $apiUrl): ResponseInterface
     {
+        return $this->httpClient->request(
+            HttpMethods::POST->value,
+            $apiUrl, [
+                'json' => [
+                    'id' => $GLOBALS['USER_ID'],
+                    'jsonrpc' => '2.0',
+                    'method' => $method,
+                    'params' => $params,
+                ],
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $GLOBALS['TOKEN']
+                ],
+            ]
+        );
+    }
+
+    private function returnError(ResponseInterface $response, ExceptionInterface $exception, string $errorType, string $function): string
+    {
+        printf('<pre>');
+        printf($response->getInfo('debug'));
+        printf('</pre>');
+        return "Some $errorType error happened in $function. Error is " . $exception->getMessage();
     }
 }

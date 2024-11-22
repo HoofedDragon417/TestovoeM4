@@ -2,8 +2,8 @@
 
 namespace App\Entity;
 
-class HttpMethods
+enum HttpMethods:string
 {
-    public static string $POST = 'POST';
-    public static string $GET = 'GET';
+    case POST = 'POST';
+    case GET = 'GET';
 }
